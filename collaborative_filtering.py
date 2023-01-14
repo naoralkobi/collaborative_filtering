@@ -1,5 +1,6 @@
 # Naor Alkobi 315679985
 import collections
+import heapq
 import time
 import pandas as pd
 import numpy as np
@@ -9,34 +10,51 @@ from sklearn.metrics.pairwise import pairwise_distances
 
 class Recommender:
     def __init__(self, strategy='user'):
+        self.pred = None
+        self.user_item_matrix = None
         self.strategy = strategy
         self.similarity = np.NaN
+        self.products_id = []
+        self.user_id = []
+
+    def create_users_and_products_list(self, matrix):
+        for userId, productId in matrix.iterrows():
+            self.user_id.append(userId)
+        self.products_id.extend(matrix.head())
 
     def fit(self, matrix):
-        " * ** YOUR CODE HERE ** * "
 
-        matrix = matrix.apply(lambda x: round(x - matrix.mean(axis=1), 2))
-
+        self.create_users_and_products_list(matrix)
         self.user_item_matrix = matrix
+        ratings = matrix.to_numpy()
+        mean_user_rating = matrix.mean(axis=1).to_numpy().reshape(-1, 1)
+        ratings_diff = (ratings - mean_user_rating)
+        ratings_diff[np.isnan(ratings_diff)] = 0
 
         if self.strategy == 'user':
             # User - User based collaborative filtering
             start_time = time.time()
 
-            self.pred = pd.DataFrame() #self.pred should contain your prediction metrix.
+            user_similarity = 1 - pairwise_distances(ratings_diff, metric='cosine')
 
+            self.pred = self.user_item_matrix.copy()
+            self.pred.values[:] = (mean_user_rating + user_similarity.dot(ratings_diff) / np.array(
+                [np.abs(user_similarity).sum(axis=1)]).T).round(2)
 
             time_taken = time.time() - start_time
             print('User Model in {} seconds'.format(time_taken))
 
             return self
 
-
         elif self.strategy == 'item':
             # Item - Item based collaborative filtering
             start_time = time.time()
 
-            self.pred = pd.DataFrame() #self.pred should contain your prediction metrix.
+            item_similarity = 1 - pairwise_distances(ratings_diff.T, metric='cosine')
+
+            self.pred = self.user_item_matrix.copy()
+            self.pred.values[:] = (mean_user_rating + ratings_diff.dot(item_similarity) / np.array(
+                [np.abs(item_similarity).sum(axis=1)])).round(2)
 
             time_taken = time.time() - start_time
             print('Item Model in {} seconds'.format(time_taken))
@@ -45,27 +63,52 @@ class Recommender:
 
     def recommend_items(self, user_id, k=5):
 
+        if user_id not in self.user_id:
+            print("Error in userID")
+            return None
 
-        " * ** YOUR CODE HERE ** * "
         if self.strategy == 'user':
+            # get specific row values from predication matrix.d
+            predicted_ratings_row = self.pred.loc[self.pred.index == user_id].copy()
+            # get specific row values from user_item matrix.
+            data_matrix_row = self.user_item_matrix.loc[self.user_item_matrix.index == user_id]
 
-            # Fill missing values with zero of each column
-            self.user_item_matrix.fillna(0, inplace=True)
+            predicted_ratings_row[~np.isnan(data_matrix_row)] = 0
 
-            # Create a similarity matrix
-            item_similarity = cosine_similarity(self.user_item_matrix.T)
-
-            user_ratings = self.user_item_matrix.loc[user_id]
-
-            user_index = user_ratings.index
-            similar_items = item_similarity[user_index]
-            similar_items = similar_items.T[user_index]
-            similar_items = similar_items.sum(axis=1)
-            similar_items = similar_items.sort_values(ascending=False)
-
-            top_k_items = similar_items.index[:k]
-            return top_k_items
+            # get the first k.
+            sorted_indices = np.flip(np.argsort(predicted_ratings_row.values))[0][:k].tolist()
+            k_items = []
+            for index in sorted_indices:
+                k_items.append(self.products_id[index])
+            return k_items
 
         elif self.strategy == 'item':
-            return None
+            # get specific row values from predication matrix.d
+            predicted_ratings_row = self.pred.loc[self.pred.index == user_id].copy()
+            # get specific row values from user_item matrix.
+            data_matrix_row = self.user_item_matrix.loc[self.user_item_matrix.index == user_id]
+
+            predicted_ratings_row[~np.isnan(data_matrix_row)] = 0
+
+            indices = np.flip(np.argsort(predicted_ratings_row.values))[0].tolist()
+            values = collections.defaultdict(list)
+            for index in indices:
+                rate = float(predicted_ratings_row[self.products_id[index]].values)
+                values[rate].append(index)
+
+            smallest_indices = []
+            for key in list(values.keys()):
+                val = values[key]
+                smallest_indices.extend(val)
+                if len(smallest_indices) > k:
+                    break
+
+            smallest_indices.sort()
+            # get the first k.
+            smallest_indices = smallest_indices[:k]
+
+            k_items = []
+            for index in smallest_indices:
+                k_items.append(self.products_id[index])
+            return k_items
 
