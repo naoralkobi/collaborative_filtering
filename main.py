@@ -29,8 +29,12 @@ if __name__ == '__main__':
 
 
     # # PART 3 - EVALUATION
-    RMSE(test_set, recommender_user)
-    RMSE(test_set, recommender_item)
+    user_rmse, benchmark_user = RMSE(test_set, recommender_user)
+    item_rmse, benchmark_item = RMSE(test_set, recommender_item)
+    print(f"User RMSE {user_rmse}")
+    print(f"User benchmark {benchmark_user}")
+    print(f"item RMSE {item_rmse}")
+    print(f"item benchmark {benchmark_item}")
     precision_at_k(test_set, recommender_user, 20)
     recall_at_k(test_set, recommender_user, 20)
 

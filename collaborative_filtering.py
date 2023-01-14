@@ -15,11 +15,12 @@ class Recommender:
         self.strategy = strategy
         self.similarity = np.NaN
         self.products_id = []
-        self.user_id = []
+        self.users_id = []
+        self.pred_val = 0
 
     def create_users_and_products_list(self, matrix):
         for userId, productId in matrix.iterrows():
-            self.user_id.append(userId)
+            self.users_id.append(userId)
         self.products_id.extend(matrix.head())
 
     def fit(self, matrix):
@@ -63,7 +64,7 @@ class Recommender:
 
     def recommend_items(self, user_id, k=5):
 
-        if user_id not in self.user_id:
+        if user_id not in self.users_id:
             print("Error in userID")
             return None
 
@@ -79,6 +80,8 @@ class Recommender:
             sorted_indices = np.flip(np.argsort(predicted_ratings_row.values))[0][:k].tolist()
             k_items = []
             for index in sorted_indices:
+                rate = float(predicted_ratings_row[self.products_id[index]].values)
+                self.pred_val = rate
                 k_items.append(self.products_id[index])
             return k_items
 
@@ -97,11 +100,16 @@ class Recommender:
                 values[rate].append(index)
 
             smallest_indices = []
+            remain = k
             for key in list(values.keys()):
                 val = values[key]
-                smallest_indices.extend(val)
-                if len(smallest_indices) > k:
+                val.sort()
+                if len(val) >= remain:
+                    smallest_indices.extend(val[:remain])
                     break
+                else:
+                    smallest_indices.extend(val)
+                    remain -= len(val)
 
             smallest_indices.sort()
             # get the first k.
@@ -109,6 +117,8 @@ class Recommender:
 
             k_items = []
             for index in smallest_indices:
+                rate = float(predicted_ratings_row[self.products_id[index]].values)
+                self.pred_val = rate
                 k_items.append(self.products_id[index])
             return k_items
 
