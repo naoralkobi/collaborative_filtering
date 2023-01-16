@@ -84,9 +84,32 @@ def precision_at_k(test_set, cf, k):
 
 
 def recall_at_k(test_set, cf, k):
-    actual_table = pd.pivot_table(test_set, index='UserId',
-                                          columns='ProductId', values='Rating')
+    # Create a pivot table of the test set to make it easier to access user-item ratings
+    actual_table = pd.pivot_table(test_set, index='UserId', columns='ProductId', values='Rating')
+    recall_k = []
+    recall_k_benchmark = []
 
-    return 0
+    # Get the top k recommended items from the benchmark method
+    top_k_recommended_benchmark = get_best_k_recomnended_items(cf, k)
+
+    for user_id, user_actual_rate in actual_table.iterrows():
+        # Get the top k recommended items for the current user
+        top_k_recommended = cf.recommend_items(user_id, k)
+        # Get the items that have a rating of 3 or higher for the current user
+        relevant_items = [col for col, rate in user_actual_rate.items() if rate >= 3]
+
+        if not relevant_items:
+            continue
+
+        # Find the items that were recommended and are also relevant
+        relevant_items_recommended = list(set(top_k_recommended) & set(relevant_items))
+        relevant_items_recommended_benchmark = list(set(top_k_recommended_benchmark) & set(relevant_items))
+
+        # Calculate the recall at k for the current user and append it to the list
+        recall_k.append(len(relevant_items_recommended) / len(relevant_items))
+        recall_k_benchmark.append(len(relevant_items_recommended_benchmark) / len(relevant_items))
+
+    # Calculate the mean recall at k for all users
+    return round(np.mean(recall_k), 5), round(np.mean(recall_k_benchmark), 5)
 
 

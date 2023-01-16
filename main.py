@@ -38,7 +38,8 @@ if __name__ == '__main__':
     precision_k, precision_k_benchmark = precision_at_k(test_set, recommender_user, 20)
     print("Precision@20" + " user-based CF: " + str(precision_k))
     print("Precision highest-ranked(benchmark)@20" + ": " + str(precision_k_benchmark))
-    recall_k = recall_at_k(test_set, recommender_user, 20)
+    recall_k, recall_k_benchmark = recall_at_k(test_set, recommender_user, 20)
     print(f"recall k is:  {recall_k}")
+    print("Precision highest-ranked(benchmark)@20" + ": " + str(recall_k_benchmark))
 
 
