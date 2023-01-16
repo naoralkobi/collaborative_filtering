@@ -37,16 +37,56 @@ def RMSE(test_set, cf):
         benchmark_table.loc[index] = series
         i += 1
 
-    rmse = get_rmse(actual_table, predication_table)
+    root_mean_square_error = get_rmse(actual_table, predication_table)
     mean_based = get_rmse(actual_table, benchmark_table)
 
-    return rmse, mean_based
+    return root_mean_square_error, mean_based
+
+
+def get_best_k_recomnended_items(cf, k):
+    # calculate the mean of each item column in the user_item_matrix
+    items_means = cf.user_item_matrix.mean(skipna=True)
+    # sort the items by their mean in descending order
+    items_means = items_means.sort_values(ascending=False)
+    # get the first k items
+    top_k_items = items_means.head(k).index.tolist()
+    return top_k_items
 
 
 def precision_at_k(test_set, cf, k):
-    "*** YOUR CODE HERE ***"
-    pass
+    # Create a pivot table of the test set to make it easier to access user-item ratings
+    actual_table = pd.pivot_table(test_set, index='UserId', columns='ProductId', values='Rating')
+    precision_k = []
+    precision_k_benchmark = []
+    # Get the top k recommended items from the benchmark method
+    top_k_recommended_benchmark = get_best_k_recomnended_items(cf, k)
+
+    for user_id, user_actual_rate in actual_table.iterrows():
+        # Get the top k recommended items for the current user
+        top_k_recommended = cf.recommend_items(user_id, k)
+        # Get the items that have a rating of 3 or higher for the current user
+        relevant_items = [col for col, rate in user_actual_rate.items() if rate >= 3]
+
+        # If there are no relevant items, skip this user
+        if not relevant_items:
+            continue
+
+        # Find the items that were recommended and are also relevant
+        relevant_items_recommended = list(set(top_k_recommended) & set(relevant_items))
+        relevant_items_recommended_benchmark = list(set(top_k_recommended_benchmark) & set(relevant_items))
+
+        # Calculate the precision at k for the current user and append it to the list
+        precision_k.append(len(relevant_items_recommended) / k)
+        precision_k_benchmark.append(len(relevant_items_recommended_benchmark) / k)
+
+    # Calculate the mean precision at k for all users and round to 5 decimal places
+    return round(np.mean(precision_k), 5), round(np.mean(precision_k_benchmark), 5)
+
 
 def recall_at_k(test_set, cf, k):
-    "*** YOUR CODE HERE ***"
-    pass
+    actual_table = pd.pivot_table(test_set, index='UserId',
+                                          columns='ProductId', values='Rating')
+
+    return 0
+
+

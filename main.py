@@ -34,8 +34,11 @@ if __name__ == '__main__':
     print(f"User RMSE {user_rmse}")
     print(f"User benchmark {benchmark_user}")
     print(f"item RMSE {item_rmse}")
-    print(f"item benchmark {benchmark_item}")
-    precision_at_k(test_set, recommender_user, 20)
-    recall_at_k(test_set, recommender_user, 20)
+
+    precision_k, precision_k_benchmark = precision_at_k(test_set, recommender_user, 20)
+    print("Precision@20" + " user-based CF: " + str(precision_k))
+    print("Precision highest-ranked(benchmark)@20" + ": " + str(precision_k_benchmark))
+    recall_k = recall_at_k(test_set, recommender_user, 20)
+    print(f"recall k is:  {recall_k}")
 
 
