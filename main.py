@@ -24,22 +24,29 @@ if __name__ == '__main__':
     recommender_user = Recommender().fit(user_item_matrix_raw)
     recommender_item = Recommender('item').fit(user_item_matrix_raw)
 
+    recommender_user.recommend_items('AQWF3BBBDL4QJ')
+    recommender_item.recommend_items('A3EO0WA7R3LVBQ')
     # print(recommender_user.recommend_items('AQWF3BBBDL4QJ'))
     # print(recommender_item.recommend_items('A3EO0WA7R3LVBQ'))
 
 
     # # PART 3 - EVALUATION
-    user_rmse, benchmark_user = RMSE(test_set, recommender_user)
-    item_rmse, benchmark_item = RMSE(test_set, recommender_item)
-    print(f"User RMSE {user_rmse}")
-    print(f"User benchmark {benchmark_user}")
-    print(f"item RMSE {item_rmse}")
+    RMSE(test_set, recommender_user)
+    RMSE(test_set, recommender_item)
+    precision_at_k(test_set, recommender_user, 20)
+    recall_at_k(test_set, recommender_user, 20)
 
-    precision_k, precision_k_benchmark = precision_at_k(test_set, recommender_user, 20)
-    print("Precision@20" + " user-based CF: " + str(precision_k))
-    print("Precision highest-ranked(benchmark)@20" + ": " + str(precision_k_benchmark))
-    recall_k, recall_k_benchmark = recall_at_k(test_set, recommender_user, 20)
-    print(f"recall k is:  {recall_k}")
-    print("Precision highest-ranked(benchmark)@20" + ": " + str(recall_k_benchmark))
+    # user_rmse, benchmark_user = RMSE(test_set, recommender_user)
+    # item_rmse, benchmark_item = RMSE(test_set, recommender_item)
+    # print(f"User RMSE {user_rmse}")
+    # print(f"User benchmark {benchmark_user}")
+    # print(f"item RMSE {item_rmse}")
+    #
+    # precision_k, precision_k_benchmark = precision_at_k(test_set, recommender_user, 20)
+    # print("Precision@20" + " user-based CF: " + str(precision_k))
+    # print("Precision highest-ranked(benchmark)@20" + ": " + str(precision_k_benchmark))
+    # recall_k, recall_k_benchmark = recall_at_k(test_set, recommender_user, 20)
+    # print(f"recall k is:  {recall_k}")
+    # print("Precision highest-ranked(benchmark)@20" + ": " + str(recall_k_benchmark))
 
 

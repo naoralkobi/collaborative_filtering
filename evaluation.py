@@ -40,7 +40,12 @@ def RMSE(test_set, cf):
     root_mean_square_error = get_rmse(actual_table, predication_table)
     mean_based = get_rmse(actual_table, benchmark_table)
 
-    return root_mean_square_error, mean_based
+    if cf.strategy == 'user':
+        print(f"user-based CF RMSE {root_mean_square_error}")
+    else:
+        print(f"item-based CF RMSE {root_mean_square_error}")
+    print(f"mean based (benchmark) {mean_based}")
+    # return root_mean_square_error, mean_based
 
 
 def get_best_k_recomnended_items(cf, k):
@@ -80,7 +85,11 @@ def precision_at_k(test_set, cf, k):
         precision_k_benchmark.append(len(relevant_items_recommended_benchmark) / k)
 
     # Calculate the mean precision at k for all users and round to 5 decimal places
-    return round(np.mean(precision_k), 5), round(np.mean(precision_k_benchmark), 5)
+    precision_k_value = round(np.mean(precision_k), 5)
+    precision_k_benchmark_value = round(np.mean(precision_k_benchmark), 5)
+    print("Precision@20" + " user-based CF: " + str(precision_k_value))
+    print("Precision highest-ranked(benchmark)@20" + ": " + str(precision_k_benchmark_value))
+    # return round(np.mean(precision_k), 5), round(np.mean(precision_k_benchmark), 5)
 
 
 def recall_at_k(test_set, cf, k):
@@ -110,6 +119,10 @@ def recall_at_k(test_set, cf, k):
         recall_k_benchmark.append(len(relevant_items_recommended_benchmark) / len(relevant_items))
 
     # Calculate the mean recall at k for all users
-    return round(np.mean(recall_k), 5), round(np.mean(recall_k_benchmark), 5)
+    precision_k_value = round(np.mean(recall_k), 5)
+    precision_k_benchmark_value = round(np.mean(recall_k_benchmark), 5)
+    print("Recall@20" + " user-based CF: " + str(precision_k_value))
+    print("Recall highest-ranked(benchmark)@20" + ": " + str(precision_k_benchmark_value))
+    # return round(np.mean(recall_k), 5), round(np.mean(recall_k_benchmark), 5)
 
 
