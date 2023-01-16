@@ -29,7 +29,7 @@ class Recommender:
         self.user_item_matrix = matrix
         ratings = matrix.to_numpy()
         mean_user_rating = matrix.mean(axis=1).to_numpy().reshape(-1, 1)
-        ratings_diff = (ratings - mean_user_rating)
+        ratings_diff = (ratings - mean_user_rating + 0.001)
         ratings_diff[np.isnan(ratings_diff)] = 0
 
         if self.strategy == 'user':
