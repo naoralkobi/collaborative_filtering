@@ -1,128 +1,82 @@
 # Naor Alkobi 315679985
-import pandas as pd
-import math
 import numpy as np
 from sklearn.metrics import mean_squared_error
 
 
-def get_rmse(actual_table, predication_table):
-    # Create a difference table
-    diff_table = actual_table - predication_table
-
-    # Square the difference table
-    diff_table_squared = diff_table ** 2
-
-    # Find the mean of the difference_squared table
-    mean_difference_squared = diff_table_squared.mean().mean()
-
-    # Take the square root of the mean
-    rmse = np.sqrt(mean_difference_squared).round(5)
-
-    return rmse
-
-
 def RMSE(test_set, cf):
-    actual_table = pd.pivot_table(test_set, index='UserId',
-                                          columns='ProductId', values='Rating')
-    predication_table = cf.pred
 
-    mean_table = cf.user_item_matrix.copy()
-    benchmark_table = cf.user_item_matrix.copy()
-    mean_table = mean_table.apply(lambda x: x.mean(), axis=1)
+    # get the ratings from the test_set as a list
+    test_ratings = test_set['Rating'].tolist()
+    # use list comprehension to get the predicted ratings for each user-product pair in the test set
+    pred_ratings = [cf.pred.loc[row['UserId'], row['ProductId']] for _, row in test_set.iterrows()]
+    # use list comprehension to get the mean rating for each user in the test set
+    mean_ratings = [np.nanmean(cf.user_item_matrix.loc[row['UserId']]) for _, row in test_set.iterrows()]
 
-    i = 0
-    for index, series in benchmark_table.iterrows():
-        new_value = mean_table[i]
-        series = new_value
-        benchmark_table.loc[index] = series
-        i += 1
+    # calculate the RMSE for the predicted ratings and the mean ratings
+    cf_rmse = round(mean_squared_error(test_ratings, pred_ratings, squared=False), 5)
+    mean_rmse = round(mean_squared_error(test_ratings, mean_ratings, squared=False), 5)
 
-    root_mean_square_error = get_rmse(actual_table, predication_table)
-    mean_based = get_rmse(actual_table, benchmark_table)
-
+    # print the RMSE for the predicted ratings and the mean ratings
     if cf.strategy == 'user':
-        print(f"user-based CF RMSE {root_mean_square_error}")
+        print(f"user-based CF RMSE {cf_rmse}")
     else:
-        print(f"item-based CF RMSE {root_mean_square_error}")
-    print(f"mean based (benchmark) {mean_based}")
-    # return root_mean_square_error, mean_based
+        print(f"item-based CF RMSE {cf_rmse}")
+    print(f"mean based (benchmark) RMSE {mean_rmse}")
 
 
-def get_best_k_recomnended_items(cf, k):
-    # calculate the mean of each item column in the user_item_matrix
-    items_means = cf.user_item_matrix.mean(skipna=True)
-    # sort the items by their mean in descending order
-    items_means = items_means.sort_values(ascending=False)
-    # get the first k items
-    top_k_items = items_means.head(k).index.tolist()
-    return top_k_items
+def get_best_k_recomnended_items(train_data, k):
+    """
+        This function returns the top k products based on their mean rating in the train_data
+    """
+    mean_user_rating = train_data.mean(axis=0).sort_values(ascending=False)[:k].index
+    return mean_user_rating.tolist()
 
 
 def precision_at_k(test_set, cf, k):
-    # Create a pivot table of the test set to make it easier to access user-item ratings
-    actual_table = pd.pivot_table(test_set, index='UserId', columns='ProductId', values='Rating')
-    precision_k = []
-    precision_k_benchmark = []
-    # Get the top k recommended items from the benchmark method
-    top_k_recommended_benchmark = get_best_k_recomnended_items(cf, k)
-
-    for user_id, user_actual_rate in actual_table.iterrows():
-        # Get the top k recommended items for the current user
-        top_k_recommended = cf.recommend_items(user_id, k)
-        # Get the items that have a rating of 3 or higher for the current user
-        relevant_items = [col for col, rate in user_actual_rate.items() if rate >= 3]
-
-        # If there are no relevant items, skip this user
-        if not relevant_items:
+    """
+        This function calculates the precision at k for a given test set, recommendation model object and k.
+        The test set is a DataFrame that contains the actual ratings, and the recommendation model object (cf)
+        is used to get the recommended items for each user.
+    """
+    bench = get_best_k_recomnended_items(cf.user_item_matrix, k)
+    list_of_precision = []
+    list_of_precision_bench = []
+    dt = test_set.groupby('UserId')
+    for user_id, rows in dt:
+        recommended_k = cf.recommend_items(user_id, k)
+        relevant_products = rows[rows['Rating'] >= 3]['ProductId'].tolist()
+        if len(relevant_products) == 0:
             continue
+        intersection = set(relevant_products).intersection(set(recommended_k))
+        intersection_bench = set(relevant_products).intersection(set(bench))
+        precision = len(intersection) / k
+        list_of_precision.append(precision)
+        precision_bench = len(intersection_bench) / k
+        list_of_precision_bench.append(precision_bench)
 
-        # Find the items that were recommended and are also relevant
-        relevant_items_recommended = list(set(top_k_recommended) & set(relevant_items))
-        relevant_items_recommended_benchmark = list(set(top_k_recommended_benchmark) & set(relevant_items))
-
-        # Calculate the precision at k for the current user and append it to the list
-        precision_k.append(len(relevant_items_recommended) / k)
-        precision_k_benchmark.append(len(relevant_items_recommended_benchmark) / k)
-
-    # Calculate the mean precision at k for all users and round to 5 decimal places
-    precision_k_value = round(np.mean(precision_k), 5)
-    precision_k_benchmark_value = round(np.mean(precision_k_benchmark), 5)
-    print("Precision@20" + " user-based CF: " + str(precision_k_value))
-    print("Precision highest-ranked(benchmark)@20" + ": " + str(precision_k_benchmark_value))
-    # return round(np.mean(precision_k), 5), round(np.mean(precision_k_benchmark), 5)
+    print(f"precision at {k} is {np.round(np.mean(list_of_precision), 5)}")
+    print(f"precision at {k} (benchmark) is {np.round(np.mean(list_of_precision_bench), 5)}")
 
 
 def recall_at_k(test_set, cf, k):
-    # Create a pivot table of the test set to make it easier to access user-item ratings
-    actual_table = pd.pivot_table(test_set, index='UserId', columns='ProductId', values='Rating')
-    recall_k = []
-    recall_k_benchmark = []
-
-    # Get the top k recommended items from the benchmark method
-    top_k_recommended_benchmark = get_best_k_recomnended_items(cf, k)
-
-    for user_id, user_actual_rate in actual_table.iterrows():
-        # Get the top k recommended items for the current user
-        top_k_recommended = cf.recommend_items(user_id, k)
-        # Get the items that have a rating of 3 or higher for the current user
-        relevant_items = [col for col, rate in user_actual_rate.items() if rate >= 3]
-
-        if not relevant_items:
+    bench = get_best_k_recomnended_items(cf.user_item_matrix, k)
+    list_of_recall = []
+    list_of_recall_bench = []
+    for user_id in set(test_set['UserId']):
+        recommended_k = cf.recommend_items(user_id, k)
+        relevant_products = test_set[(test_set['UserId'] == user_id) & (test_set['Rating'] >= 3)]['ProductId'].tolist()
+        if not relevant_products:
             continue
+        # Get the intersection of recommended items and relevant items
+        intersection = set(relevant_products).intersection(set(recommended_k))
+        # Get the intersection of the best items and relevant items
+        intersection_bench = set(relevant_products).intersection(set(bench))
+        recall = len(intersection) / len(relevant_products)
+        list_of_recall.append(recall)
+        recall_bench = len(intersection_bench) / len(relevant_products)
+        list_of_recall_bench.append(recall_bench)
 
-        # Find the items that were recommended and are also relevant
-        relevant_items_recommended = list(set(top_k_recommended) & set(relevant_items))
-        relevant_items_recommended_benchmark = list(set(top_k_recommended_benchmark) & set(relevant_items))
-
-        # Calculate the recall at k for the current user and append it to the list
-        recall_k.append(len(relevant_items_recommended) / len(relevant_items))
-        recall_k_benchmark.append(len(relevant_items_recommended_benchmark) / len(relevant_items))
-
-    # Calculate the mean recall at k for all users
-    precision_k_value = round(np.mean(recall_k), 5)
-    precision_k_benchmark_value = round(np.mean(recall_k_benchmark), 5)
-    print("Recall@20" + " user-based CF: " + str(precision_k_value))
-    print("Recall highest-ranked(benchmark)@20" + ": " + str(precision_k_benchmark_value))
-    # return round(np.mean(recall_k), 5), round(np.mean(recall_k_benchmark), 5)
+    print(f"recall at {k} is {np.round(np.mean(list_of_recall), 5)}")
+    print(f"recall at {k} (benchmark) is {np.round(np.mean(list_of_recall_bench), 5)}")
 
 
